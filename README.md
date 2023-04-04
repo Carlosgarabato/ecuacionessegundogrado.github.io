@@ -1,0 +1,1 @@
+# ecuacionessegundogrado.github.io
