@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>El reto de las ecuaciones de segundo grado</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <style>
+       body {
+    font-family: "Arial", sans-serif;
+    background-color: #f5f5f5;
+    margin: 20;
+    padding: 0;
+}
+
+h1 {
+    background-color: #4caf50;
+    color: white;
+    text-align: center;
+    padding: 20px;
+    margin: 0;
+}
+
+.ecuacion-centrada {
+    text-align: center;
+}
+
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+input[type="text"] {
+    padding: 5px 10px;
+    font-size: 32px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+button {
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 5px;
+    margin: 5px;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+#ecuacion {
+       font-size: 45px; /* Ajusta este valor según el tamaño deseado */
+   }
+
+#contador {
+    display: flex;
+    justify-content: space-around;
+    background-color: #f1f1f1;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table th,
+table td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+table tr:hover {
+    background-color: #f5f5f5;
+}
+
+    </style>
+
+</head>
+<body>
+    <h1>El reto de las ecuaciones de segundo grado</h1>
+    <div>
+        <label for="nombre">Nombre:</label>
+        <input type="text" id="nombre">
+    </div>
+    <div>
+        <p class="ecuacion-centrada" id="ecuacion"></p>
+        <p>Resuelve la ecuación:</p>
+        <p id="ecuacion"></p>
+    </div>
+    <div>
+        <label for="respuesta">Tu respuesta (separada por comas):</label>
+        <input type="text" id="respuesta">
+    </div>
+    <button id="enviar">Enviar respuesta</button>
+    <button id="reiniciar">Reiniciar juego</button>
+    <button id="finalizar">Finalizar partida</button>
+    <button id="toggleGrafica">Ocultar/Mostrar Gráfica</button>
+
+    <div id="contador">
+        <p>Correctas: <span id="correctas">0</span></p>
+        <p>Incorrectas: <span id="incorrectas">0</span></p>
+    </div>
+    <div>
+        <h2>Gráfico de la ecuación:</h2>
+        <canvas id="grafica"></canvas>
+    </div>
+   
+    <div id="resultados" style="display: none;">
+        <h3>Gráfico de puntuaciones finales:</h3>
+<canvas id="barrasPuntuacion"></canvas>
+        <h2>Resultados finales:</h2>
+        <p id="ganador">Ganador: </p>
+        <table id="tablaResultados">
+            <thead>
+                <tr>
+                    <th>Nombre [Jugador o equipo]</th>
+                    <th>Puntuación [+2 Respuestas Correctas, -1 Respuestas Incorrectas]</th>
+                    <th>Porcentaje de Aciertos [%]</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+    <script>
+        const nombreInput = document.getElementById("nombre");
+        const respuestaInput = document.getElementById("respuesta");
+        const ecuacion = document.getElementById("ecuacion");
+        const finalizarBtn = document.getElementById("finalizar");
+        const reiniciarBtn = document.getElementById("reiniciar");
+        const resultadosDiv = document.getElementById("resultados");
+        const tablaResultados = document.getElementById("tablaResultados");
+        const correctasSpan = document.getElementById("correctas");
+        const incorrectasSpan = document.getElementById("incorrectas");
+
+        const jugadores = {};
+        function reiniciarJugadores() {
+    jugadores = {}; // Esta línea borra todos los jugadores actuales
+}
+        let correctas = 0;
+        let incorrectas = 0;
+
+        function obtenerJugador(nombre) {
+            if (!jugadores[nombre]) {
+                jugadores[nombre] = { nombre, puntuacion: 0, intentos: 0, correctos: 0 };
+            }
+            return jugadores[nombre];
+        }
+        let barrasPuntuacionChart = null;
+
+        function mostrarGanador() {
+    let maxPuntuacion = -Infinity;
+    let ganador = null;
+
+    for (const jugador of Object.values(jugadores)) {
+        if (jugador.puntuacion > maxPuntuacion) {
+            maxPuntuacion = jugador.puntuacion;
+            ganador = jugador;
+        }
+    }
+
+    const ganadorElement = document.getElementById("ganador");
+    ganadorElement.textContent = "Ganador: " + ganador.nombre + " con " + ganador.puntuacion + " puntos.";
+}
+
+
+        function crearGraficaBarrasPuntuacion() {
+    const ctx = document.getElementById("barrasPuntuacion").getContext("2d");
+
+    const nombres = Object.values(jugadores).map(j => j.nombre);
+    const puntuaciones = Object.values(jugadores).map(j => j.puntuacion);
+
+    if (barrasPuntuacionChart) {
+        barrasPuntuacionChart.destroy();
+    }
+
+    if (nombres.length === 0) {
+        return;
+    }
+
+    barrasPuntuacionChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: nombres,
+            datasets: [
+                {
+                    label: "Puntuación",
+                    data: puntuaciones,
+                    backgroundColor: "rgba(75, 192, 192, 0.2)",
+                    borderColor: "rgba(75, 192, 192, 1)",
+                    borderWidth: 1,
+                },
+            ],
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: "Puntuación",
+                    },
+                },
+            },
+        },
+    });
+}
+
+        function reiniciarJugadores() {
+    for (const nombre in jugadores) {
+        jugadores[nombre].puntuacion = 0;
+        jugadores[nombre].intentos = 0;
+        jugadores[nombre].correctos = 0;
+    }
+}
+function limpiarTablaResultados() {
+    const tbody = tablaResultados.querySelector("tbody");
+    tbody.innerHTML = "";
+}
+
+        function generarEcuacion() {
+    let a, b, c, discriminante;
+    do {
+        a = Math.floor(Math.random() * 10) + 1;
+        b = Math.floor(Math.random() * 20) - 10;
+        c = Math.floor(Math.random() * 20) - 10;
+        discriminante = b * b - 4 * a * c;
+    } while (discriminante < 0);
+
+    const ecuacionStr = a + 'x<sup>2</sup> + ' + b + 'x + ' + c + ' = 0';
+    return { ecuacionStr, coeficientes: [a, b, c] };
+}
+
+function resolverEcuacion(coeficientes) {
+    const a = coeficientes[0];
+    const b = coeficientes[1];
+    const c = coeficientes[2];
+
+    const discriminante = b * b - 4 * a * c;
+
+    if (discriminante > 0) {
+        const x1 = (-b + Math.sqrt(discriminante)) / (2 * a);
+        const x2 = (-b - Math.sqrt(discriminante)) / (2 * a);
+        return [x1, x2];
+    } else if (discriminante === 0) {
+        const x = -b / (2 * a);
+        return [x];
+    } else {
+        return [];
+    }
+    function formatCoefficient(coefficient) {
+        if (coefficient < 0) {
+            return `-${Math.abs(coefficient)}`; // Agrega un guion en lugar del signo más si el coeficiente es negativo
+        } else {
+            return `+${coefficient}`; // Agrega un signo más si el coeficiente es positivo
+        }
+    }
+    const equation = `${a}x^2${formatCoefficient(b)}x${formatCoefficient(c)}=0`;
+    document.getElementById("quadratic-equation").innerHTML = equation;
+    
+}
+
+function convertirRespuesta(respuesta) {
+    return parseFloat(respuesta);
+}
+
+        function verificarRespuesta(soluciones, respuesta) {
+            const respuestas = respuesta.split(',').map(x => x.trim());
+            const respuestasConvertidas = respuestas.map(convertirRespuesta);
+
+            soluciones.sort((a, b) => a - b);
+            respuestasConvertidas.sort((a, b) => a - b);
+
+            if (soluciones.length !== respuestasConvertidas.length) {
+                return false;
+            }
+
+            for (let i = 0; i < soluciones.length; i++) {
+                if (Math.abs(soluciones[i] - respuestasConvertidas[i]) > 0.01) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        function convertirRespuesta(respuesta) {
+    let numero;
+
+    // Fracción
+    if (respuesta.includes('/')) {
+        const fraccion = respuesta.split('/');
+        numero = parseFloat(fraccion[0]) / parseFloat(fraccion[1]);
+    }
+    // Raíz cuadrada
+    else if (respuesta.startsWith('√')) {
+        numero = Math.sqrt(parseFloat(respuesta.substring(1)));
+    }
+    // Número decimal
+    else {
+        numero = parseFloat(respuesta);
+    }
+
+    return numero;
+}
+
+
+        function actualizarPuntuacion(jugador, esCorrecto) {
+            if (esCorrecto) {
+                jugador.puntuacion += 2;
+                jugador.correctos++;
+            } else {
+                jugador.puntuacion--;
+            }
+        }
+
+        function actualizarContador(esCorrecto) {
+            if (esCorrecto) {
+                correctas++;
+            } else {
+                incorrectas++;
+            }
+            correctasSpan.textContent = correctas;
+            incorrectasSpan.textContent = incorrectas;
+        }
+
+        let chart = null;
+        function toggleGrafica() {
+    const graficaCanvas = document.getElementById("grafica");
+    if (graficaCanvas.style.display === "none") {
+        graficaCanvas.style.display = "block";
+    } else {
+        graficaCanvas.style.display = "none";
+    }
+}
+
+        function reiniciarPartida() {
+            const nuevaEcuacion = generarEcuacion();
+            ecuacion.innerHTML = nuevaEcuacion.ecuacionStr;
+            ecuacion.coeficientes = nuevaEcuacion.coeficientes;
+            respuestaInput.value = "";
+            crearGrafica(nuevaEcuacion.coeficientes);
+            correctas = 0;
+            incorrectas = 0;
+            correctasSpan.textContent = correctas;
+            incorrectasSpan.textContent = incorrectas;
+            crearGrafica(ecuacion.coeficientes);
+            reiniciarJugadores();
+            reiniciarJugadores(); // Agrega esta línea
+            limpiarTablaResultados(); // Agrega esta línea
+    crearGraficaBarrasPuntuacion(); // Agrega esta línea
+    limpiarTablaResultados(); // Agrega esta línea
+        }
+
+     
+
+
+        document.getElementById("enviar").addEventListener("click", () => {
+            const nombre = nombreInput.value.trim();
+            if (!nombre) {
+                alert("Por favor, ingresa tu nombre.");
+                return;
+            }
+
+            const respuesta = respuestaInput.value.trim();
+            if (!respuesta) {
+                alert("Por favor, ingresa una respuesta.");
+                return;
+            }
+
+            const soluciones = resolverEcuacion(ecuacion.coeficientes);
+            const esCorrecto = verificarRespuesta(soluciones, respuesta);
+            const jugador = obtenerJugador(nombre);
+            jugador.intentos++;
+            actualizarPuntuacion(jugador, esCorrecto);
+            actualizarContador(esCorrecto);
+
+            if (esCorrecto) {
+                alert("Respuesta correcta. Las soluciones son: " + soluciones.join(', ') + ". Tu puntuación actual es: " + jugador.puntuacion);
+            } else {
+                alert("Respuesta incorrecta. Las soluciones correctas son: " + soluciones.join(', ') + ". Tu puntuación actual es: " + jugador.puntuacion);
+            }
+
+            const nuevaEcuacion = generarEcuacion();
+            ecuacion.innerHTML = nuevaEcuacion.ecuacionStr;
+            ecuacion.coeficientes = nuevaEcuacion.coeficient
+            ecuacion.coeficientes = nuevaEcuacion.coeficientes;
+            respuestaInput.value = "";
+            crearGrafica(nuevaEcuacion.coeficientes);
+
+        });
+
+        reiniciarBtn.addEventListener("click", () => {
+            reiniciarPartida();
+        });
+
+        finalizarBtn.addEventListener("click", () => {
+            const tbody = tablaResultados.querySelector("tbody");
+            tbody.innerHTML = "";
+            for (const jugador of Object.values(jugadores)) {
+                const tr = document.createElement("tr");
+
+                const nombreTd = document.createElement("td");
+                nombreTd.textContent = jugador.nombre;
+                tr.appendChild(nombreTd);
+
+                const puntuacionTd = document.createElement("td");
+                puntuacionTd.textContent = jugador.puntuacion;
+                tr.appendChild(puntuacionTd);
+
+                const porcentajeAciertosTd = document.createElement("td");
+                porcentajeAciertosTd.textContent = ((jugador.correctos / jugador.intentos) * 100).toFixed(2) + '%';
+                tr.appendChild(porcentajeAciertosTd);
+
+                tbody.appendChild(tr);
+            }
+            crearGraficaBarrasPuntuacion();
+            mostrarGanador();
+            resultadosDiv.style.display = "block";
+        });
+        document.getElementById("toggleGrafica").addEventListener("click", () => {
+    toggleGrafica();
+});
+        const ecuacionInicial = generarEcuacion();
+        ecuacion.innerHTML = ecuacionInicial.ecuacionStr;
+        ecuacion.coeficientes = ecuacionInicial.coeficientes;
+        crearGrafica(ecuacionInicial.coeficientes);
+        function crearGrafica(coeficientes) {
+            const solucionesGrafica = resolverEcuacion(coeficientes);
+const minX = Math.min(...solucionesGrafica) - 5;
+const maxX = Math.max(...solucionesGrafica) + 5;
+    const ctx = document.getElementById("grafica").getContext("2d");
+    const data = [];
+    for (let x = -20; x <= 20; x += 0.01) {
+        const y = coeficientes[0] * x * x + coeficientes[1] * x + coeficientes[2];
+        data.push({ x, y });
+    }
+    
+    if (chart) {
+        chart.destroy();
+    }
+
+    chart = new Chart(ctx, {
+        type: "line",
+        data: {
+            datasets: [
+                {
+                    label: "Ecuación",
+                    data: data,
+                    borderColor: "rgba(75, 192, 192, 1)",
+                    backgroundColor: "rgba(75, 192, 192, 0.2)",
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    fill: false,
+                },
+                {
+    label: "Puntos de corte con el eje x",
+    data: solucionesGrafica.map(solucion => ({ x: solucion, y: 0 })),
+    backgroundColor: "rgba(255, 99, 132, 1)",
+    borderColor: "rgba(255, 99, 132, 1)",
+    borderWidth: 1,
+    pointRadius: 5,
+    pointStyle: "circle",
+    fill: false,
+},
+            ],
+        },
+        options: {
+            scales: {
+                x: {
+                    type: "linear",
+                    title: {
+                        display: true,
+                        text: "x",
+                    },
+                    min: minX,
+    max: maxX,
+                },
+                y: {
+                    type: "linear",
+                    title: {
+                        display: true,
+                        text: "y",
+                    },
+                },
+            },
+        },
+    });
+}
+
+    </script>
+</body>
+</html>
